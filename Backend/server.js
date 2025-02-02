@@ -2,6 +2,7 @@ const express = require('express');
 const { MongoClient } = require('mongodb');
 const internshipsModule = require('./route_api/internships');
 const jobsModule = require('./route_api/jobs');
+const contactusModule = require('./route_api/contactus');
 require('dotenv').config();
 
 const app = express();
@@ -24,10 +25,12 @@ async function initializeDatabase() {
         // Initialize collections
         internshipsModule.initializeDatabase(db);
         jobsModule.initializeDatabase(db);
+        contactusModule.initializeDatabase(db);
 
         // Use the internships and jobs routes
         app.use('/internships', internshipsModule.router);
         app.use('/jobs', jobsModule.router);
+        app.use('/contactus', contactusModule.router);
 
         // Start the server
         app.listen(port, () => {
