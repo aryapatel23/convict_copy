@@ -1,4 +1,5 @@
 const express = require('express');
+const cors = require('cors');
 const { MongoClient } = require('mongodb');
 const internshipsModule = require('./route_api/internships');
 const jobsModule = require('./route_api/jobs');
@@ -9,6 +10,7 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // Middleware
+app.use(cors());
 app.use(express.json());
 
 const uri = process.env.MONGO_URI;
