@@ -21,19 +21,25 @@ router.get('/', async (req, res) => {
     }
 });
 
-// GET: Get a single job by ID
-router.get('/:id', async (req, res) => {
+// GET: Search for jobs by name
+router.get('/:name', async (req, res) => {
     try {
-        const id = req.params.id;
-        const job = await jobs.findOne({ _id: new ObjectId(id) });
-        if (!job) {
-            return res.status(404).json({ error: "Job not found" });
+        const jobTitle = req.params.name;
+
+        const jobsList = await jobs
+            .find({ "Job Title": new RegExp(jobTitle, 'i') }) // Case-insensitive search
+            .toArray(); // Convert cursor to an array
+
+        if (jobsList.length === 0) {
+            return res.status(404).json({ error: "No jobs found" });
         }
-        res.status(200).json(job);
+
+        res.status(200).json(jobsList);
     } catch (err) {
-        res.status(500).send("Error fetching job: " + err.message);
+        res.status(500).json({ error: "Error fetching jobs", details: err.message });
     }
 });
+
 
 // POST: Add a new job
 router.post('/', async (req, res) => {

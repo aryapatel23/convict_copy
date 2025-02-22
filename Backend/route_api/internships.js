@@ -20,26 +20,22 @@ router.get('/', async (req, res) => {
     }
 });
 
-// 🔹 GET single internship by ID
-router.get('/:id', async (req, res) => {
+// 🔹 GET internships by job title (search)
+router.get('/:name', async (req, res) => {
     try {
-        const { id } = req.params;
+        const job_title = req.params.name;
 
-        if (!ObjectId.isValid(id)) {
-            return res.status(400).json({ error: "Invalid ID format" });
-        }
+        const internshipsList = await internships
+            .find({ job_title: new RegExp(job_title, 'i') })  // Case-insensitive search
+            .toArray(); // Convert cursor to an array
 
-        const internship = await internships.findOne({ _id: new ObjectId(id) });
-
-        if (!internship) {
-            return res.status(404).json({ error: "Internship not found" });
-        }
-
-        res.status(200).json(internship);
+        res.status(200).json(internshipsList);
     } catch (err) {
-        res.status(500).json({ error: "Error fetching internship", details: err.message });
+        console.error("Error fetching internships:", err);
+        res.status(500).json({ error: "Error fetching internships", details: err.message });
     }
 });
+
 
 // 🔹 POST: Create new internship
 router.post('/', async (req, res) => {
