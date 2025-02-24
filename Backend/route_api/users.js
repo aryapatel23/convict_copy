@@ -14,6 +14,8 @@ function initializeDatabase(dbInstance) {
 // 🔹 POST: Add a new user
 router.post('/', async (req, res) => {
     try {
+        console.log("🔹 Received POST request:", req.body); // Debugging log
+
         const newuser = req.body;
 
         // Validation: Ensure required fields are present
@@ -22,11 +24,15 @@ router.post('/', async (req, res) => {
         }
 
         const result = await users.insertOne(newuser);
+        console.log("✅ User inserted:", result); // Debugging log
+
         res.status(201).json({ message: "User added", id: result.insertedId });
     } catch (err) {
+        console.error("❌ Error adding user:", err.message);
         res.status(500).json({ error: "Error adding user", details: err.message });
     }
 });
+
 
 // 🔹 GET: Fetch all users
 router.get('/', async (req, res) => {
