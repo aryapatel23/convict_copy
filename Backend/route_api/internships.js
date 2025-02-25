@@ -36,6 +36,23 @@ router.get('/:name', async (req, res) => {
     }
 });
 
+router.get('/:name', async (req, res) => {
+    try {
+        const job_title = req.params.name;
+
+        const jobsList = await jobs
+            .find({ "job_title": new RegExp(job_title, 'i') }) // Case-insensitive search
+            .toArray(); // Convert cursor to an array
+
+        if (jobsList.length === 0) {
+            return res.status(404).json({ error: "No jobs found" });
+        }
+
+        res.status(200).json(jobsList);
+    } catch (err) {
+        res.status(500).json({ error: "Error fetching jobs", details: err.message });
+    }
+});
 
 // 🔹 POST: Create new internship
 router.post('/', async (req, res) => {
@@ -48,48 +65,60 @@ router.post('/', async (req, res) => {
     }
 });
 
-// 🔹 PATCH: Partially update an internship
-router.patch('/:id', async (req, res) => {
+// 🔹 PATCH: Update an internship by job_title
+router.patch("/:name", async (req, res) => {
     try {
-        const { id } = req.params;
+        if (!internships) {
+            return res.status(500).json({ error: "Database not initialized" });
+        }
+
+        const jobTitle = decodeURIComponent(req.params.name).trim();
         const updates = req.body;
 
-        if (!ObjectId.isValid(id)) {
-            return res.status(400).json({ error: "Invalid ID format" });
+        if (!updates || Object.keys(updates).length === 0) {
+            return res.status(400).json({ error: "No update fields provided" });
         }
 
         const result = await internships.updateOne(
-            { _id: new ObjectId(id) },
+            { job_title: { $regex: new RegExp("^" + jobTitle + "$", "i") } }, // Case-insensitive match
             { $set: updates }
         );
 
-        if (result.modifiedCount === 0) {
-            return res.status(404).json({ error: "Internship not found or no changes made" });
+        if (result.matchedCount === 0) {
+            return res.status(404).json({ error: "Internship not found" });
         }
 
-        res.status(200).json({ message: "Internship updated", modifiedCount: result.modifiedCount });
+        res.status(200).json({
+            message: "Internship updated successfully",
+            modifiedCount: result.modifiedCount,
+        });
     } catch (err) {
+        console.error("Error updating internship:", err.message);
         res.status(500).json({ error: "Error updating internship", details: err.message });
     }
 });
 
-// 🔹 DELETE: Remove an internship
-router.delete('/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
 
-        if (!ObjectId.isValid(id)) {
-            return res.status(400).json({ error: "Invalid ID format" });
+// 🔹 DELETE: Remove an internship by job_title
+router.delete("/:name", async (req, res) => {
+    try {
+        if (!internships) {
+            return res.status(500).json({ error: "Database not initialized" });
         }
 
-        const result = await internships.deleteOne({ _id: new ObjectId(id) });
+        const jobTitle = decodeURIComponent(req.params.name).trim();
+
+        const result = await internships.deleteOne({
+            job_title: { $regex: new RegExp("^" + jobTitle + "$", "i") } // Case-insensitive match
+        });
 
         if (result.deletedCount === 0) {
             return res.status(404).json({ error: "Internship not found" });
         }
 
-        res.status(200).json({ message: "Internship deleted" });
+        res.status(200).json({ message: "Internship deleted successfully" });
     } catch (err) {
+        console.error("Error deleting internship:", err.message);
         res.status(500).json({ error: "Error deleting internship", details: err.message });
     }
 });
