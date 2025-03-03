@@ -22,16 +22,18 @@ router.get('/', async (req, res) => {
 // 🔹 GET internships by job title (search)
 router.get('/search/:name', async (req, res) => {
     try {
-        const job_title = req.params.name;
+        const internshipTitle = req.params.name;
         const internshipsList = await internships
-            .find({ job_title: new RegExp(job_title, 'i') })  // Case-insensitive search
+            .find({ internship_title: new RegExp(internshipTitle, 'i') }) // Case-insensitive search
             .toArray();
+
         res.status(200).json(internshipsList);
     } catch (err) {
         console.error("Error fetching internships:", err);
         res.status(500).json({ error: "Error fetching internships", details: err.message });
     }
 });
+
 
 // 🔹 GET internship by ID
 router.get('/:id', async (req, res) => {
@@ -65,23 +67,32 @@ router.post('/', async (req, res) => {
 // 🔹 PATCH: Update an internship by job_title
 router.patch("/update/:name", async (req, res) => {
     try {
-        const jobTitle = decodeURIComponent(req.params.name).trim();
+        const internshipTitle = decodeURIComponent(req.params.name).trim(); // Decode and clean input
         const updates = req.body;
+
+        // Validate if request body has update fields
         if (!updates || Object.keys(updates).length === 0) {
             return res.status(400).json({ error: "No update fields provided" });
         }
+
+        // Update the correct field in MongoDB
         const result = await internships.updateOne(
-            { job_title: { $regex: new RegExp("^" + jobTitle + "$", "i") } },
+            { internship_title: { $regex: new RegExp("^" + internshipTitle + "$", "i") } }, // Case-insensitive match
             { $set: updates }
         );
+
+        // Check if the document was found and updated
         if (result.matchedCount === 0) {
             return res.status(404).json({ error: "Internship not found" });
         }
+
         res.status(200).json({ message: "Internship updated successfully" });
     } catch (err) {
+        console.error("Error updating internship:", err);
         res.status(500).json({ error: "Error updating internship", details: err.message });
     }
 });
+
 
 // 🔹 DELETE: Remove an internship by job_title
 router.delete("/delete/:name", async (req, res) => {
