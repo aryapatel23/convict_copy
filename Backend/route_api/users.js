@@ -1,47 +1,97 @@
-const express = require('express');
-const { ObjectId } = require('mongodb');
-require('dotenv').config();
+const express = require("express");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const authenticateJWT = require("../middleware/auth"); // Import middleware
+const isAdmin = require("../middleware/admin");
 
 const router = express.Router();
+let usersCollection; // Will be initialized later
 
-let db, users;
+const JWT_SECRET = process.env.JWT_SECRET || "mysecretkey";
 
-function initializeDatabase(dbInstance) {
-    db = dbInstance;
-    users = db.collection("users");
+// **Initialize Database Connection**
+function initializeDatabase(db) {
+    usersCollection = db.collection("users");
 }
 
-// 🔹 POST: Add a new user
-router.post('/', async (req, res) => {
+// **User Registration**
+router.post("/register", async (req, res) => {
     try {
-        console.log("🔹 Received POST request:", req.body); // Debugging log
+        const { username, email, password, role } = req.body;
 
-        const newuser = req.body;
-
-        // Validation: Ensure required fields are present
-        if (!newuser.name || !newuser.email || !newuser.password) {
-            return res.status(400).json({ error: "Name, Email, and Password are required" });
+        if (!username || !email || !password) {
+            return res.status(400).json({ message: "All fields are required" });
         }
 
-        const result = await users.insertOne(newuser);
-        console.log("✅ User inserted:", result); // Debugging log
+        // Check if user exists
+        const existingUser = await usersCollection.findOne({ email });
+        if (existingUser) {
+            return res.status(400).json({ message: "User already exists" });
+        }
 
-        res.status(201).json({ message: "User added", id: result.insertedId });
-    } catch (err) {
-        console.error("❌ Error adding user:", err.message);
-        res.status(500).json({ error: "Error adding user", details: err.message });
+        // Hash password
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Default role to "user" if not provided
+        const userRole = role === "admin" ? "admin" : "user";
+
+        // Save user
+        await usersCollection.insertOne({ username, email, password: hashedPassword, role: userRole });
+
+        res.status(201).json({ message: "User registered successfully", role: userRole });
+
+    } catch (error) {
+        res.status(500).json({ message: "Server error", error: error.message });
     }
 });
 
 
-// 🔹 GET: Fetch all users
-router.get('/', async (req, res) => {
+// **User Login**
+router.post("/login", async (req, res) => {
     try {
-        const userList = await users.find({}).toArray();
-        res.status(200).json(userList);
-    } catch (err) {
-        res.status(500).json({ error: "Error fetching users", details: err.message });
+        const { email, password } = req.body;
+
+        if (!email || !password) {
+            return res.status(400).json({ message: "All fields are required" });
+        }
+
+        // Find user
+        const user = await usersCollection.findOne({ email });
+        if (!user) {
+            return res.status(400).json({ message: "Invalid credentials" });
+        }
+
+        // Compare passwords
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ message: "Invalid credentials" });
+        }
+
+        // Generate JWT token with role
+        const token = jwt.sign(
+            { userId: user._id.toString(), role: user.role }, 
+            JWT_SECRET, 
+            { expiresIn: "60d" }
+        );
+
+        res.json({ token, user: { id: user._id, username: user.username, email: user.email, role: user.role } });
+
+    } catch (error) {
+        res.status(500).json({ message: "Server error", error: error.message });
     }
 });
 
-module.exports = { router, initializeDatabase };
+
+// **Protected Route Example**
+router.get("/protected", authenticateJWT, (req, res) => {
+    res.json({ message: "Access granted", user: req.user });
+});
+
+
+
+router.get("/admin-dashboard", isAdmin, (req, res) => {
+    res.json({ message: "Welcome, Admin!", adminData: req.user });
+});
+
+// Export Module
+module.exports = { initializeDatabase, router };

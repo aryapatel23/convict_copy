@@ -24,10 +24,10 @@ router.get('/', async (req, res) => {
 // GET: Search for jobs by name
 router.get('/:name', async (req, res) => {
     try {
-        const jobTitle = req.params.name;
+        const job_Title = req.params.name;
 
         const jobsList = await jobs
-            .find({ "Job Title": new RegExp(jobTitle, 'i') }) // Case-insensitive search
+            .find({ "Job_Title": new RegExp(job_Title, 'i') }) // Case-insensitive search
             .toArray(); // Convert cursor to an array
 
         if (jobsList.length === 0) {
